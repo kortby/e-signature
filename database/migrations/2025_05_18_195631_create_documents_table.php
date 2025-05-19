@@ -13,6 +13,10 @@ return new class extends Migration
     {
         Schema::create('documents', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('document_template_id')->nullable()->constrained()->onDelete('set null')->after('status');
+            $table->string('recipient_name')->nullable()->after('document_template_id'); // Example for prefill
+            $table->string('recipient_email')->nullable()->after('recipient_name'); // For sending/tracking
+            $table->json('prefilled_data')->nullable()->after('recipient_email');
             $table->foreignId('user_id')->constrained()->onDelete('cascade'); // Owner of the document
             $table->string('title')->nullable();
             $table->string('original_filename');

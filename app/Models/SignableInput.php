@@ -12,13 +12,13 @@ class SignableInput extends Model
 
     protected $fillable = [
         'document_page_id',
-        // 'assigned_signer_id',
+        'template_field_id', // New: Link to the original template field if this input came from a template
         'type',
         'pos_x',
         'pos_y',
-        'value',
+        'value',    // This will store the actual pre-filled or user-entered data
         'settings',
-        'label',
+        'label',    // This might be copied from TemplateField's label or key_name
     ];
 
     protected $casts = [
@@ -31,6 +31,14 @@ class SignableInput extends Model
     public function documentPage(): BelongsTo
     {
         return $this->belongsTo(DocumentPage::class);
+    }
+
+    /**
+     * The template field this input was derived from (if any).
+     */
+    public function templateField(): BelongsTo
+    {
+        return $this->belongsTo(TemplateField::class);
     }
 
     // Optional: Relationship to an assigned signer (User model)

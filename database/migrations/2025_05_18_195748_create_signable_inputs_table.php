@@ -14,6 +14,10 @@ return new class extends Migration
         Schema::create('signable_inputs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('document_page_id')->constrained()->onDelete('cascade');
+            $table->foreignId('template_field_id')->nullable()->constrained()->onDelete('set null');
+            // The `label` field in signable_inputs can now be inherited from template_fields.key_name or template_fields.label
+            // The `value` field will store the actual data entered or pre-filled.
+
             // $table->foreignId('assigned_signer_id')->nullable()->constrained('users')->onDelete('set null'); // Future: for assigning to specific signers
             $table->string('type'); // e.g., 'text', 'signature', 'date', 'initials', 'checkbox'
             $table->integer('pos_x'); // X coordinate on the page image

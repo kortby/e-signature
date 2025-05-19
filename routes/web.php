@@ -5,6 +5,24 @@ use Illuminate\Support\Facades\Route;
 use App\Livewire\DocumentUploadForm;
 use App\Livewire\DocumentEditor;
 use App\Models\Document; // Make sure to import your Document model
+use App\Livewire\DocumentTemplateList;
+use App\Livewire\DocumentTemplateForm;
+use App\Livewire\DocumentTemplateEditor;
+use App\Models\DocumentTemplate; // Import this
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/templates', DocumentTemplateList::class)->name('templates.index');
+    Route::get('/templates/create', DocumentTemplateForm::class)->name('templates.create');
+    Route::get('/templates/{documentTemplate}/edit', DocumentTemplateEditor::class)->name('templates.edit');
+    // Add other document routes if they are separate
+    // Route::get('/upload-document', DocumentUploadForm::class)->name('document.upload');
+    // Route::get('/documents/{document}/edit', DocumentEditor::class)->name('document.editor');
+    // Route::get('/dashboard', function () {
+    //     $documents = \App\Models\Document::where('user_id', auth()->id())->latest()->get();
+    //     return view('dashboard', ['documents' => $documents]);
+    // })->name('dashboard');
+});
+
 
 // Route for displaying the upload form
 Route::get('/upload-document', DocumentUploadForm::class)->name('document.upload')->middleware('auth');
@@ -15,6 +33,12 @@ Route::get('/documents/{document}/edit', DocumentEditor::class)->name('document.
 
 // A simple dashboard or document list page (example)
 Route::get('/', function () {
+    // You would typically fetch documents for the logged-in user
+    $documents = Document::where('user_id', auth()->id())->latest()->get();
+    return view('dashboard', ['documents' => $documents]);
+})->middleware(['auth'])->name('dashboard');
+
+Route::get('/dashboard', function () {
     // You would typically fetch documents for the logged-in user
     $documents = Document::where('user_id', auth()->id())->latest()->get();
     return view('dashboard', ['documents' => $documents]);
