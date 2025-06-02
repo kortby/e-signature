@@ -1,6 +1,5 @@
 <?php
 
-
 namespace App\Livewire;
 
 use App\Models\DocumentTemplate;

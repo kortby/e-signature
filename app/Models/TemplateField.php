@@ -12,7 +12,6 @@ class TemplateField extends Model
 
     protected $fillable = [
         'document_template_id',
-        // 'document_template_page_id', // Add this if you want a direct FK to DocumentTemplatePage
         'page_number',
         'type',
         'key_name',
@@ -23,7 +22,7 @@ class TemplateField extends Model
         'default_value',
         'is_prefillable',
         'is_readonly_after_prefill',
-        // 'assigned_to_role',
+        'data_source_mapping', // New
     ];
 
     protected $casts = [
@@ -32,9 +31,6 @@ class TemplateField extends Model
         'is_readonly_after_prefill' => 'boolean',
     ];
 
-    /**
-     * The document template this field belongs to.
-     */
     public function documentTemplate(): BelongsTo
     {
         return $this->belongsTo(DocumentTemplate::class);

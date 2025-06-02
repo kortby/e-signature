@@ -17,26 +17,14 @@ class DocumentTemplatePage extends Model
         'image_path',
     ];
 
-    /**
-     * Get the document template this page belongs to.
-     */
     public function documentTemplate(): BelongsTo
     {
         return $this->belongsTo(DocumentTemplate::class);
     }
 
-    /**
-     * Get all template fields on this specific template page.
-     * This assumes template_fields has a page_number that matches.
-     * For a direct relationship, you could add document_template_page_id to template_fields.
-     */
     public function templateFields(): HasMany
     {
-        // This relationship assumes you query template_fields by document_template_id and page_number
-        // To make it a direct Eloquent relationship, you would add 'document_template_page_id'
-        // to the 'template_fields' table and change the foreign key here.
-        // For now, this is a conceptual link.
         return $this->hasMany(TemplateField::class, 'document_template_id', 'document_template_id')
-            ->where('page_number', $this->page_number);
+                    ->where('page_number', $this->page_number);
     }
 }

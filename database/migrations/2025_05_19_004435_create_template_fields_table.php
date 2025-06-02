@@ -14,20 +14,18 @@ return new class extends Migration
         Schema::create('template_fields', function (Blueprint $table) {
             $table->id();
             $table->foreignId('document_template_id')->constrained()->onDelete('cascade');
-            // $table->foreignId('document_template_page_id')->constrained()->onDelete('cascade'); // Link to the specific template page
-            $table->unsignedInteger('page_number'); // Page number within the template
-            $table->string('type'); // e.g., 'text', 'signature', 'date', 'initials', 'checkbox'
-            $table->string('key_name')->comment('Unique key for this field within the template, e.g., tenant_full_name, lease_start_date'); // Critical for mapping
-            $table->string('label')->nullable()->comment('User-friendly label shown in UI, e.g., Tenant Full Name');
+            $table->unsignedInteger('page_number');
+            $table->string('type');
+            $table->string('key_name')->comment('Unique key for this field within the template');
+            $table->string('label')->nullable()->comment('User-friendly label');
             $table->integer('pos_x');
             $table->integer('pos_y');
-            $table->json('settings')->nullable(); // width, height, font, required, etc.
+            $table->json('settings')->nullable();
             $table->text('default_value')->nullable();
-            $table->boolean('is_prefillable')->default(true)->comment('Can this field be pre-filled with instance-specific data?');
-            $table->boolean('is_readonly_after_prefill')->default(false)->comment('If pre-filled, can the signer change it?');
-            // $table->string('assigned_to_role')->nullable()->comment('E.g., tenant, landlord. For multi-signer workflows.');
+            $table->boolean('is_prefillable')->default(true);
+            $table->boolean('is_readonly_after_prefill')->default(false);
+            $table->string('data_source_mapping')->nullable()->comment('e.g., user.name, user.email, property.address. Null for manual.'); // New field
             $table->timestamps();
-
             $table->unique(['document_template_id', 'key_name'], 'template_field_key_unique');
         });
     }

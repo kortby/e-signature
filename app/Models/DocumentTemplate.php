@@ -27,24 +27,18 @@ class DocumentTemplate extends Model
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * All fields defined for this template.
-     */
+    public function pages(): HasMany
+    {
+        return $this->hasMany(DocumentTemplatePage::class)->orderBy('page_number');
+    }
+
     public function templateFields(): HasMany
     {
         return $this->hasMany(TemplateField::class);
     }
 
-    /**
-     * Documents that were instantiated from this template.
-     */
     public function documents(): HasMany
     {
         return $this->hasMany(Document::class);
-    }
-
-    public function pages(): HasMany
-    {
-        return $this->hasMany(DocumentTemplatePage::class)->orderBy('page_number');
     }
 }

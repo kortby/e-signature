@@ -9,11 +9,13 @@ use App\Livewire\DocumentTemplateList;
 use App\Livewire\DocumentTemplateForm;
 use App\Livewire\DocumentTemplateEditor;
 use App\Models\DocumentTemplate; // Import this
+use App\Livewire\UseDocumentTemplateForm; // Add this use statement
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/templates', DocumentTemplateList::class)->name('templates.index');
     Route::get('/templates/create', DocumentTemplateForm::class)->name('templates.create');
     Route::get('/templates/{documentTemplate}/edit', DocumentTemplateEditor::class)->name('templates.edit');
+    Route::get('/templates/use', UseDocumentTemplateForm::class)->name('templates.use');
     // Add other document routes if they are separate
     // Route::get('/upload-document', DocumentUploadForm::class)->name('document.upload');
     // Route::get('/documents/{document}/edit', DocumentEditor::class)->name('document.editor');

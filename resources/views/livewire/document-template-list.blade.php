@@ -1,4 +1,4 @@
-<div class="p-24">
+<div>
     <div class="mb-4 flex justify-between items-center">
         <h2 class="text-2xl font-semibold text-gray-700">Document Templates</h2>
         <a href="{{ route('templates.create') }}" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
@@ -40,7 +40,7 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <a href="{{ route('templates.edit', $template) }}" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit Fields</a>
-                            {{-- <a href="#" wire:click="useTemplate({{ $template->id }})" class="text-green-600 hover:text-green-900">Use Template</a> --}}
+                            <a href="{{ route('templates.use', ['templateId' => $template->id]) }}" class="text-green-600 hover:text-green-900">Use Template</a>
                             {{-- Add delete functionality later --}}
                         </td>
                     </tr>

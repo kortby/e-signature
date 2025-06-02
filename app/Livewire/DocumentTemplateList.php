@@ -26,6 +26,6 @@ class DocumentTemplateList extends Component
         // Create this file at: resources/views/livewire/document-template-list.blade.php
         return view('livewire.document-template-list', [
             'templates' => $templates,
-        ])->layout('layouts.app');
+        ])->layout('layouts.app');;
     }
 }

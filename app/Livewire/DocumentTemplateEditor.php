@@ -23,6 +23,17 @@ class DocumentTemplateEditor extends Component
     public $fieldPosX;
     public $fieldPosY;
     public $fieldSettings = ['width' => '150px', 'height' => '30px']; // Default settings
+    public $fieldDataSourceMapping = null; // New property for data source
+
+    // Predefined data source options
+    public $dataSourceOptions = [
+        '' => 'Manual Input / No Dynamic Source',
+        'user.name' => 'Recipient User - Name',
+        'user.email' => 'Recipient User - Email',
+        // Add more predefined mappings as needed, e.g., 'property.address'
+        // For 'property.address', you'd need a way to select a property when using the template.
+    ];
+
 
     protected function rules()
     {
@@ -35,12 +46,14 @@ class DocumentTemplateEditor extends Component
             'fieldPosY' => 'required|integer',
             'fieldSettings.width' => 'nullable|string',
             'fieldSettings.height' => 'nullable|string',
+            'fieldDataSourceMapping' => 'nullable|string|max:255', // Validation for new field
         ];
     }
 
     protected $validationAttributes = [
         'fieldKeyName' => 'Key Name (e.g., tenant_name)',
         'fieldLabel' => 'Label (e.g., Tenant Name)',
+        'fieldDataSourceMapping' => 'Data Source Mapping',
     ];
 
     public function mount(DocumentTemplate $documentTemplate)
@@ -51,9 +64,10 @@ class DocumentTemplateEditor extends Component
     // Called by Alpine when a new field is dropped from palette
     public function prepareNewField($pageId, $type, $x, $y)
     {
-        $page = $this->documentTemplate->pages()->find($pageId);
+        $page = $this->documentTemplate->pages()->find($pageId); // Ensure this finds DocumentTemplatePage
         if (!$page) {
             session()->flash('error', 'Template page not found.');
+            Log::error("Template page with ID {$pageId} not found for template {$this->documentTemplate->id}.");
             return;
         }
         $this->resetFieldForm();
@@ -63,7 +77,7 @@ class DocumentTemplateEditor extends Component
         $this->fieldPosX = round($x);
         $this->fieldPosY = round($y);
         $this->fieldLabel = Str::title(str_replace('_', ' ', $type)) . ' Field'; // Default label
-        $this->fieldKeyName = Str::snake($type . '_' . uniqid()); // Default unique key name
+        $this->fieldKeyName = Str::snake($type . '_' . substr(uniqid(), -5)); // Shorter unique key name
         $this->showFieldModal = true;
     }
 
@@ -82,16 +96,24 @@ class DocumentTemplateEditor extends Component
         $this->fieldType = $field->type;
         $this->fieldPageNumber = $field->page_number;
         $this->fieldSettings = $field->settings ?? ['width' => '150px', 'height' => '30px'];
+        $this->fieldDataSourceMapping = $field->data_source_mapping; // Load existing mapping
 
         if (!is_null($newX) && !is_null($newY)) { // Position updated by drag
             $this->fieldPosX = round($newX);
             $this->fieldPosY = round($newY);
-            $this->saveTemplateField(); // Directly save if only position changed
-        } else { // Open modal for other edits
-            $this->fieldPosX = $field->pos_x;
-            $this->fieldPosY = $field->pos_y;
-            $this->showFieldModal = true;
+            // Don't save yet, let user confirm other details in modal if needed, or save directly if that's the flow
+            // For now, we assume drag only updates position, other edits via modal click.
+            // If direct save on drag is desired:
+            // $this->saveTemplateField();
+            // For now, just update position and reload. Modal will show updated position.
+            $field->update(['pos_x' => round($newX), 'pos_y' => round($newY)]);
+            $this->documentTemplate->refresh()->load('pages', 'templateFields');
+            return; // Skip modal if only position changed by drag
         }
+        // Open modal for other edits or if clicked
+        $this->fieldPosX = $field->pos_x;
+        $this->fieldPosY = $field->pos_y;
+        $this->showFieldModal = true;
     }
 
     public function updateFieldPosition($fieldId, $x, $y)
@@ -121,6 +143,7 @@ class DocumentTemplateEditor extends Component
             'pos_x' => $this->fieldPosX,
             'pos_y' => $this->fieldPosY,
             'settings' => $this->fieldSettings,
+            'data_source_mapping' => $this->fieldDataSourceMapping ?: null, // Store null if empty
         ];
 
         if ($this->editingFieldId) {
@@ -157,7 +180,7 @@ class DocumentTemplateEditor extends Component
 
     private function resetFieldForm()
     {
-        $this->reset(['editingFieldId', 'fieldKeyName', 'fieldLabel', 'fieldType', 'fieldPageNumber', 'fieldPosX', 'fieldPosY']);
+        $this->reset(['editingFieldId', 'fieldKeyName', 'fieldLabel', 'fieldType', 'fieldPageNumber', 'fieldPosX', 'fieldPosY', 'fieldDataSourceMapping']);
         $this->fieldSettings = ['width' => '150px', 'height' => '30px'];
     }
 

@@ -1,4 +1,4 @@
-<div class="flex h-screen bg-gray-100 p-8">
+<div class="flex h-screen bg-gray-100">
     <div class="w-72 bg-white p-4 shadow-lg space-y-4 overflow-y-auto">
         <h3 class="text-lg font-semibold text-gray-700">Add Template Fields</h3>
         <div id="template-field-palette" class="space-y-2">
@@ -51,11 +51,11 @@
                                  style="left: {{ $field->pos_x }}px; top: {{ $field->pos_y }}px; width: {{ $field->settings['width'] ?? '150px' }}; height: {{ $field->settings['height'] ?? '30px' }};"
                                  data-field-id="{{ $field->id }}"
                                  draggable="true"
-                                 title="Key: {{ $field->key_name }} | Label: {{ $field->label }}"
+                                 title="Key: {{ $field->key_name }} | Label: {{ $field->label }} @if($field->data_source_mapping) | Source: {{ $field->data_source_mapping }} @endif"
                                  @click.stop="$wire.editField({{ $field->id }})">
                                 <div class="w-full h-full flex items-center justify-center text-xs p-1 overflow-hidden">
                                    {{ $field->label ?: $field->key_name }} ({{ Str::limit($field->type, 6) }})
-                                   {{-- ({{ $field->pos_x }}, {{ $field->pos_y }}) --}}
+                                   @if($field->data_source_mapping) <span class="ml-1 text-blue-600" title="Data Source: {{ $field->data_source_mapping }}">🔗</span> @endif
                                 </div>
                             </div>
                         @endforeach
@@ -87,6 +87,21 @@
                        class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
                 @error('fieldLabel') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
             </div>
+
+            {{-- Data Source Mapping --}}
+            <div>
+                <label for="fieldDataSourceMapping" class="block text-sm font-medium text-gray-700">Data Source Mapping (Optional)</label>
+                <select wire:model.defer="fieldDataSourceMapping" id="fieldDataSourceMapping"
+                        class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                    @foreach($dataSourceOptions as $value => $display)
+                        <option value="{{ $value }}">{{ $display }}</option>
+                    @endforeach
+                </select>
+                @error('fieldDataSourceMapping') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                <p class="text-xs text-gray-500 mt-1">Select a dynamic data source (e.g., from Recipient User) or leave as 'Manual Input'.</p>
+            </div>
+
+
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label for="fieldSettingsWidth" class="block text-sm font-medium text-gray-700">Width (e.g., 150px or 50%)</label>
@@ -201,6 +216,8 @@ document.addEventListener('alpine:init', () => {
 
                         // console.log('Drop Existing Field:', { fieldId, finalX, finalY });
                         if (fieldId) {
+                           // Call editField to update position and potentially open modal for other edits
+                           // For now, this directly updates position via updateFieldPosition
                            this.$wire.updateFieldPosition(fieldId, finalX, finalY);
                         }
                     }
