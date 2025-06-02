@@ -26,7 +26,6 @@ Route::middleware(['auth'])->group(function () {
 });
 
 
-// Route for displaying the upload form
 Route::get('/upload-document', DocumentUploadForm::class)->name('document.upload')->middleware('auth');
 
 // Route for the document editor

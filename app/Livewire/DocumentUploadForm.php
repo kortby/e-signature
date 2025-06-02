@@ -93,6 +93,7 @@ class DocumentUploadForm extends Component
 
             session()->flash('success', 'Document uploaded and processed successfully!');
             return redirect()->route('document.editor', ['document' => $document->id]);
+
         } catch (\Throwable $e) { // Catching Throwable for broader error catching
             Storage::disk('public')->delete($pdfPath);
             Storage::disk('public')->deleteDirectory('uploads/documents/' . $document->id);

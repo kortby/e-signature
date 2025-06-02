@@ -1,4 +1,4 @@
-<div class="p-8 w-auto flex items-center">
+<div>
     <form wire:submit.prevent="save" class="space-y-6 p-4 bg-white shadow-md rounded-lg">
         @if (session()->has('success'))
             <div class="p-4 mb-4 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
