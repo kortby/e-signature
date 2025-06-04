@@ -1,5 +1,23 @@
 <?php
 
+// First, you'll need to install spatie/pdf-to-image.
+// composer require spatie/pdf-to-image
+// This code is now updated for spatie/pdf-to-image ^3.1
+
+// Ensure Imagick and Ghostscript are installed on your server/local environment,
+// as spatie/pdf-to-image depends on them.
+
+// For PDF generation, you might need:
+// composer require setasign/fpdi
+// composer require tecnickcom/tcpdf
+// (Or other PDF manipulation libraries)
+
+// -------------------------------------------------------------------------
+// 1. Livewire Component: DocumentUploadForm
+// -------------------------------------------------------------------------
+// Create this file at: app/Livewire/DocumentUploadForm.php
+// You can generate it using: php artisan make:livewire DocumentUploadForm
+
 namespace App\Livewire;
 
 use App\Models\Document;

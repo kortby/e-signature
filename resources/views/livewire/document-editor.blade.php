@@ -1,15 +1,8 @@
 <div class="flex h-screen bg-gray-100">
-    <div class="w-64 bg-white p-4 shadow-lg space-y-4 overflow-y-auto @if($isCompleted) hidden @endif">
-        <h3 class="text-lg font-semibold text-gray-700">Add Fields</h3>
-        <p class="text-xs text-gray-500">(Primarily for document setup - fields are usually fixed for signing)</p>
-        <div id="input-palette" class="space-y-2">
-            <div class="p-2 border rounded-md bg-gray-50 hover:bg-gray-200 cursor-grab" draggable="true" data-input-type="text">Text Box</div>
-            <div class="p-2 border rounded-md bg-gray-50 hover:bg-gray-200 cursor-grab" draggable="true" data-input-type="signature">Signature</div>
-            <div class="p-2 border rounded-md bg-gray-50 hover:bg-gray-200 cursor-grab" draggable="true" data-input-type="date">Date</div>
-            <div class="p-2 border rounded-md bg-gray-50 hover:bg-gray-200 cursor-grab" draggable="true" data-input-type="checkbox">Checkbox</div>
-        </div>
-        <hr>
-        <div class="mt-4">
+    <div class="w-64 bg-white p-4 shadow-lg space-y-4 overflow-y-auto">
+        <h3 class="text-lg font-semibold text-gray-700">Document Actions</h3>
+        <hr class="my-2">
+        <div class="mt-2">
              <h4 class="text-md font-semibold text-gray-700 mb-2">Document Info</h4>
              <p class="text-sm text-gray-600"><strong>Title:</strong> {{ $document->title }}</p>
              <p class="text-sm text-gray-600">
@@ -17,8 +10,10 @@
              </p>
              <p class="text-sm text-gray-600"><strong>Pages:</strong> {{ $document->pages->count() }}</p>
         </div>
+        <hr class="my-2">
+
         @if(!$isCompleted)
-        <div class="mt-6">
+        <div class="mt-4">
             <button wire:click="markAsCompleted"
                     onclick="return confirm('Are you sure you want to mark this document as completed? Fields may become read-only.')"
                     class="w-full px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50">
@@ -26,8 +21,30 @@
             </button>
         </div>
         @else
-        <div class="mt-6 p-3 bg-green-100 text-green-700 rounded-md text-sm">
+        <div class="mt-4 p-3 bg-green-100 text-green-700 rounded-md text-sm">
             This document is completed.
+        </div>
+        <div class="mt-4">
+            <button wire:click="downloadCompletedDocument"
+                    wire:loading.attr="disabled"
+                    class="w-full px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
+                <span wire:loading wire:target="downloadCompletedDocument">Generating...</span>
+                <span wire:loading.remove wire:target="downloadCompletedDocument">Download Signed PDF</span>
+            </button>
+        </div>
+        @endif
+        
+        {{-- Palette only shown if document is not completed and user is perhaps an admin/owner --}}
+        {{-- This logic might need to be more sophisticated based on user roles --}}
+        @if(!$isCompleted && auth()->id() == $document->user_id) 
+        <hr class="my-4">
+        <h3 class="text-lg font-semibold text-gray-700">Add Fields</h3>
+        <p class="text-xs text-gray-500">(For document setup)</p>
+        <div id="input-palette" class="space-y-2">
+            <div class="p-2 border rounded-md bg-gray-50 hover:bg-gray-200 cursor-grab" draggable="true" data-input-type="text">Text Box</div>
+            <div class="p-2 border rounded-md bg-gray-50 hover:bg-gray-200 cursor-grab" draggable="true" data-input-type="signature">Signature</div>
+            <div class="p-2 border rounded-md bg-gray-50 hover:bg-gray-200 cursor-grab" draggable="true" data-input-type="date">Date</div>
+            <div class="p-2 border rounded-md bg-gray-50 hover:bg-gray-200 cursor-grab" draggable="true" data-input-type="checkbox">Checkbox</div>
         </div>
         @endif
     </div>
@@ -68,7 +85,7 @@
                                         select-none"
                                  style="left: {{ $input->pos_x }}px; top: {{ $input->pos_y }}px; width: {{ $input->settings['width'] ?? '150px' }}; height: {{ $input->settings['height'] ?? '30px' }};"
                                  data-input-id="{{ $input->id }}"
-                                 draggable="{{ !$isCompleted ? 'true' : 'false' }}" {{-- Disable drag if completed --}}
+                                 draggable="{{ !$isCompleted && auth()->id() == $document->user_id ? 'true' : 'false' }}" {{-- Disable drag if completed or not owner --}}
                                  @if($input->type === 'signature' && !$isCompleted)
                                      wire:click.stop="openSignatureModal({{ $input->id }})"
                                  @endif
@@ -81,7 +98,7 @@
                                            @if($isCompleted) readonly @else wire:change="updateInputValue({{ $input->id }}, $event.target.value)" @endif
                                            class="w-full h-full text-sm border-none bg-transparent focus:ring-0 p-1 {{ $isCompleted ? 'bg-gray-50 cursor-default' : '' }}">
                                 @elseif ($input->type === 'signature')
-                                    <div class="w-full h-full flex items-center justify-center text-sm italic p-1 {{ $input->value ? 'text-black font-semibold' : 'text-gray-500' }} {{ $isCompleted && !$input->value ? 'bg-gray-50' : '' }}">
+                                    <div class="w-full h-full flex items-center justify-center text-sm italic p-1 {{ $input->value ? 'text-black font-semibold font-serif' : 'text-gray-500' }} {{ $isCompleted && !$input->value ? 'bg-gray-50' : '' }}">
                                         {{ $input->value ?: ($isCompleted ? '[Not Signed]' : '[Click to Sign]') }}
                                     </div>
                                 @elseif ($input->type === 'date')
@@ -95,7 +112,7 @@
                                                id="checkbox-{{ $input->id }}"
                                                @if($isCompleted) disabled @else wire:change="updateCheckboxValue({{ $input->id }}, $event.target.checked)" @endif
                                                {{ $input->value == '1' ? 'checked' : '' }}
-                                               class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 {{ $isCompleted ? 'cursor-default' : '' }}">
+                                               class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 {{ $isCompleted ? 'cursor-default opacity-70' : 'cursor-pointer' }}">
                                     </div>
                                 @else
                                     <div class="w-full h-full flex items-center justify-center text-sm p-1 {{ $isCompleted ? 'text-gray-700' : 'text-gray-500' }}">
@@ -147,40 +164,51 @@
 document.addEventListener('alpine:init', () => {
     Alpine.data('documentEditor', () => ({
         isDocumentCompleted: @json($isCompleted), // Get initial completed state
+        isDocumentOwner: @json(auth()->id() == $document->user_id), // Check if current user is owner
+
         init() {
-            // console.log('Alpine document editor initialized. Completed:', this.isDocumentCompleted);
-            if (!this.isDocumentCompleted) { // Only init drag/drop if not completed
+            // console.log('Alpine document editor initialized. Completed:', this.isDocumentCompleted, 'Owner:', this.isDocumentOwner);
+            if (!this.isDocumentCompleted && this.isDocumentOwner) { // Only init palette drag if not completed AND owner
                 this.initPaletteDrag();
+            }
+            if(!this.isDocumentCompleted) { // Init dropzones and input drag if not completed (for anyone to move their own fields if allowed, or admin to adjust)
                 this.initPageDropzones();
                 this.initExistingInputsDrag();
-
-                const editorArea = this.$el.querySelector('.flex-1.p-6.overflow-y-auto'); // More specific selector
-                if (editorArea) {
-                    const observer = new MutationObserver((mutationsList) => {
-                        if (this.isDocumentCompleted) return; // Don't re-init if completed
-                        for (const mutation of mutationsList) {
-                            if (mutation.type === 'childList') {
-                                mutation.addedNodes.forEach(node => {
-                                    if (node.nodeType === 1) {
-                                        if (node.matches('.signable-input')) {
-                                            this.makeSingleInputDraggable(node);
-                                        }
-                                        node.querySelectorAll('.signable-input').forEach(el => this.makeSingleInputDraggable(el));
-                                    }
-                                });
-                            }
-                        }
-                    });
-                    observer.observe(editorArea, { childList: true, subtree: true });
-                }
             }
-             // Watch for Livewire updates to 'isCompleted' if needed for Alpine state
+
+
+            const editorArea = this.$el.querySelector('.flex-1.p-6.overflow-y-auto');
+            if (editorArea) {
+                const observer = new MutationObserver((mutationsList) => {
+                    if (this.isDocumentCompleted) return;
+                    for (const mutation of mutationsList) {
+                        if (mutation.type === 'childList') {
+                            mutation.addedNodes.forEach(node => {
+                                if (node.nodeType === 1) {
+                                    if (node.matches('.signable-input')) {
+                                        this.makeSingleInputDraggable(node);
+                                    }
+                                    node.querySelectorAll('.signable-input').forEach(el => this.makeSingleInputDraggable(el));
+                                }
+                            });
+                        }
+                    }
+                });
+                observer.observe(editorArea, { childList: true, subtree: true });
+            }
+            
             this.$watch('isDocumentCompleted', (value) => {
-                // console.log('Document completed state changed in Alpine:', value);
-                if (value) {
-                    // If document becomes completed, might need to disable draggability etc.
-                    // For now, draggable attribute in blade handles this mostly.
-                }
+                 // console.log('Document completed state changed in Alpine:', value);
+                 // Re-evaluate draggable status of existing items if completion status changes
+                 if(value){ // If completed, ensure no new listeners are added
+                    document.querySelectorAll('.signable-input').forEach(el => {
+                        el.setAttribute('draggable', 'false');
+                        // Potentially remove listeners if absolutely needed, but draggable=false should suffice
+                    });
+                 } else {
+                    // If somehow it becomes not completed again, re-init dragging
+                    this.initExistingInputsDrag();
+                 }
             });
         },
 
@@ -199,7 +227,7 @@ document.addEventListener('alpine:init', () => {
             const dropzones = document.querySelectorAll('.page-dropzone');
             dropzones.forEach(zone => {
                 zone.addEventListener('dragover', (event) => {
-                    if (this.isDocumentCompleted) return;
+                    if (this.isDocumentCompleted && !this.isDocumentOwner) return; // Allow owner to drag even if completed (for template setup)
                     event.preventDefault();
                     const source = event.dataTransfer.types.includes('source') ? event.dataTransfer.getData('source') : 'unknown';
                     if (event.dataTransfer.getData('source') === 'palette') {
@@ -210,7 +238,7 @@ document.addEventListener('alpine:init', () => {
                 });
 
                 zone.addEventListener('drop', (event) => {
-                    if (this.isDocumentCompleted) return;
+                    if (this.isDocumentCompleted && !this.isDocumentOwner) return;
                     event.preventDefault();
                     const pageId = event.currentTarget.dataset.pageId;
                     const source = event.dataTransfer.getData('source');
@@ -219,11 +247,16 @@ document.addEventListener('alpine:init', () => {
                     let y = event.clientY - rect.top;
 
                     if (source === 'palette') {
-                        const inputType = event.dataTransfer.getData('inputType');
-                        if (inputType) {
-                            this.$wire.addSignableInput(pageId, inputType, Math.round(x), Math.round(y), {width: '150px', height: '30px'});
+                        if(this.isDocumentOwner) { // Only owner can add new fields
+                            const inputType = event.dataTransfer.getData('inputType');
+                            if (inputType) {
+                                this.$wire.addSignableInput(pageId, inputType, Math.round(x), Math.round(y), {width: '150px', height: '30px'});
+                            }
                         }
                     } else if (source === 'page') {
+                        // Allow moving existing fields even if not owner, as long as not completed
+                         if (this.isDocumentCompleted) return;
+
                         const inputId = event.dataTransfer.getData('inputId');
                         const offsetX = parseFloat(event.dataTransfer.getData('offsetX')) || 0;
                         const offsetY = parseFloat(event.dataTransfer.getData('offsetY')) || 0;
@@ -242,10 +275,17 @@ document.addEventListener('alpine:init', () => {
         },
         
         makeSingleInputDraggable(inputEl) {
-            if (inputEl._alpineDragStartListenerAttached || this.isDocumentCompleted) return;
-            inputEl.setAttribute('draggable', 'true');
+            const isDraggable = inputEl.getAttribute('draggable') === 'true';
+            if (inputEl._alpineDragStartListenerAttached || !isDraggable ) return;
+
             inputEl.addEventListener('dragstart', (event) => {
-                if (this.isDocumentCompleted) { event.preventDefault(); return; }
+                if (this.isDocumentCompleted && !this.isDocumentOwner) { event.preventDefault(); return; }
+                // Only allow drag if not completed OR if completed AND current user is owner (for template setup phase)
+                // The draggable attribute in blade should already handle this, but double check here.
+                if (this.isDocumentCompleted && !this.isDocumentOwner && inputEl.getAttribute('draggable') === 'false') {
+                     event.preventDefault(); return;
+                }
+
                 const targetInput = event.target.closest('.signable-input');
                 event.dataTransfer.setData('inputId', targetInput.dataset.inputId);
                 event.dataTransfer.setData('source', 'page');

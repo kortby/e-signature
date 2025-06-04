@@ -4,10 +4,15 @@ namespace App\Livewire;
 
 use App\Models\Document;
 use App\Models\SignableInput;
-use Illuminate\Support\Facades\Log; // Keep Log
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
 use Illuminate\Support\Str;
+use setasign\Fpdi\Tcpdf\Fpdi; // For PDF generation with TCPDF
+// If TCPDF_FONTS is not found, you might need to ensure TCPDF is correctly autoloaded
+// or define the path to TCPDF's fonts directory if using custom fonts.
+// For standard fonts like helvetica, it should generally work.
+// use TCPDF_FONTS; // This might not be necessary if using standard fonts
 
 class DocumentEditor extends Component
 {
@@ -79,10 +84,7 @@ class DocumentEditor extends Component
         $input = SignableInput::find($inputId);
         if ($input && $input->documentPage->document_id === $this->document->id) {
             $input->update(['value' => $value]);
-            // Could refresh partially if needed, or rely on wire:model.live for immediate feedback
-            // For now, a full refresh is fine or let Livewire handle the specific model update.
-            $this->document->refresh()->load('pages.signableInputs'); // Ensure view updates
-             // session()->flash('message', 'Field updated.');
+            $this->document->refresh()->load('pages.signableInputs');
         }
     }
 
@@ -105,10 +107,9 @@ class DocumentEditor extends Component
 
         $this->signingInputId = $inputId;
         $input = SignableInput::find($inputId);
-        // Pre-fill with existing signature if any
         $this->typedSignature = $input ? $input->value : '';
         $this->showSignatureModal = true;
-        $this->resetErrorBag('typedSignature'); // Clear previous validation errors
+        $this->resetErrorBag('typedSignature');
     }
 
     public function saveSignature()
@@ -140,9 +141,107 @@ class DocumentEditor extends Component
     {
         if ($this->document->status !== 'completed') {
             $this->document->update(['status' => 'completed']);
-            // Optionally, send notifications, etc.
             session()->flash('success', 'Document marked as completed!');
-            $this->document->refresh(); // Refresh status for the view
+            $this->document->refresh();
+        }
+    }
+
+    // Download Completed Document
+    public function downloadCompletedDocument()
+    {
+        if ($this->document->status !== 'completed') {
+            session()->flash('error', 'Document must be completed before download.');
+            return null;
+        }
+
+        $originalPdfPath = Storage::disk('public')->path($this->document->storage_path);
+        if (!Storage::disk('public')->exists($this->document->storage_path)) {
+            session()->flash('error', 'Original PDF not found.');
+            Log::error("Original PDF not found for document ID {$this->document->id} at path {$this->document->storage_path}");
+            return null;
+        }
+
+        $this->document->load('pages.signableInputs');
+
+        try {
+            $pdf = new Fpdi();
+            $pdf->setPrintHeader(false);
+            $pdf->setPrintFooter(false);
+
+            // Set the source file for FPDI *before* importing pages
+            $pageCount = $pdf->setSourceFile($originalPdfPath); // This also returns page count
+
+            for ($i = 1; $i <= $pageCount; $i++) {
+                $documentPage = $this->document->pages->firstWhere('page_number', $i);
+                // It's possible a document might not have entries for all pages if no inputs are on them
+                // but we still want to import the original PDF page.
+
+                $templateId = $pdf->importPage($i); // Import page by number
+                $size = $pdf->getTemplateSize($templateId);
+
+                $pdf->AddPage($size['orientation'], [$size['width'], $size['height']]);
+                $pdf->useTemplate($templateId);
+
+                // Coordinate Transformation Constants (NEEDS ACCURATE VALUES)
+                $imageDisplayWidthPx = 800; // Max width of image in editor (example)
+                $scaleFactorX = $size['width'] / $imageDisplayWidthPx;
+                $scaleFactorY = $scaleFactorX; // Simplification
+
+                if ($documentPage) { // Process inputs only if we have a corresponding DocumentPage record
+                    foreach ($documentPage->signableInputs as $input) {
+                        if (empty($input->value) && $input->type !== 'checkbox') continue;
+
+                        $pdfX = $input->pos_x * $scaleFactorX;
+                        $pdfY = $input->pos_y * $scaleFactorY;
+                        
+                        $inputHeightSettings = $input->settings['height'] ?? '30px';
+                        $inputHeightPx = (int) filter_var($inputHeightSettings, FILTER_SANITIZE_NUMBER_INT);
+                        // Convert input height from pixels to points for PDF cell height
+                        $inputCellHeightPoints = $inputHeightPx * $scaleFactorY; 
+                        // Default font size in points
+                        $fontSizePoints = 10; 
+
+
+                        $pdf->SetFont('helvetica', '', $fontSizePoints);
+                        $pdf->SetTextColor(0, 0, 0);
+
+                        if ($input->type === 'text' || $input->type === 'date') {
+                            $pdf->SetXY($pdfX, $pdfY);
+                            // Use MultiCell for better text wrapping if needed, Cell for simple line
+                            // Adjusting cell height to be slightly larger than font for padding
+                            $pdf->Cell(0, $inputCellHeightPoints, $input->value, 0, 0, 'L');
+                        } elseif ($input->type === 'signature') {
+                            $pdf->SetFont('helvetica', 'I', 12); // Italic for signature
+                            $pdf->SetXY($pdfX, $pdfY);
+                            $pdf->Cell(0, $inputCellHeightPoints, $input->value, 0, 0, 'L');
+                        } elseif ($input->type === 'checkbox') {
+                            // Ensure checkbox size is reasonable in PDF points
+                            $checkboxDrawSize = 4; // Size of checkbox in points (e.g., 4pt x 4pt box)
+                            // Adjust Y position slightly for checkbox to align better if needed
+                            $pdf->Rect($pdfX, $pdfY + ($inputCellHeightPoints - $checkboxDrawSize)/2 , $checkboxDrawSize, $checkboxDrawSize, 'D'); 
+                            if ($input->value == '1') {
+                                // Draw an 'X' or a checkmark
+                                $pdf->SetFont('zapfdingbats', '', 10);
+                                // The character for a checkmark in ZapfDingbats is typically 52.
+                                // You might need to adjust position slightly to center it.
+                                $pdf->Text($pdfX + $checkboxDrawSize * 0.1, $pdfY + ($inputCellHeightPoints - $checkboxDrawSize)/2 + $checkboxDrawSize * 0.1, \TCPDF_FONTS::unichr(52));
+                            }
+                        }
+                    }
+                }
+            }
+
+            $filename = Str::slug($this->document->title ?: 'completed-document') . '.pdf';
+            // Output the PDF to the browser for download
+            // Using 'D' will force download, 'I' will attempt to display inline
+            return response()->streamDownload(function () use ($pdf) {
+                echo $pdf->Output('S'); // 'S' returns the PDF as a string
+            }, $filename, ['Content-Type' => 'application/pdf']);
+
+        } catch (\Exception $e) {
+            Log::error("PDF Generation Error for Document ID {$this->document->id}: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+            session()->flash('error', 'Could not generate PDF: ' . $e->getMessage());
+            return null;
         }
     }
 
